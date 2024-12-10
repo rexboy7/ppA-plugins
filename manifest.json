@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Blocklister for ppA Academy",
+  "description": "Base Level Extension",
+  "version": "1.0",
+  "content_scripts": [
+    {
+      "js": ["content.js"],
+      "matches": [
+        "https://www.pressplay.cc/club/index/*"
+      ]
+    }
+  ]
+
+}

@@ -5,6 +5,7 @@ function run() {
   const blockList = JSON.parse(localStorage.getItem("blockList") || "{}");
   const postItemElemList = document.getElementsByClassName("post-item");
   const postContainerElem = document.querySelector("#post-container");
+  const userOptions = JSON.parse(localStorage.getItem("userOptions") || "{}");
 
   // Filter
   const filterThread = (postItemElem, blockList) => {
@@ -94,13 +95,16 @@ function run() {
   }
 
   // Block list
-
   const blockListElem = document.createElement("div");
   blockListElem.className = "column-item";
   blockListElem.innerHTML = `
     <div class="section-title">已過濾使用者</div>
     <div class="column-item__content">
       <ul class="block-list"></ul>
+    </div>
+    <div class="section-title">介面自訂選項</div>
+    <div class="column-item__content">
+      <ul class="block-list"><input type='checkbox' name='useScroll'/>回應區使用捲軸</ul>
     </div>
   `;
   rightContainerElem.insertAdjacentElement("afterend", blockListElem);
@@ -126,21 +130,42 @@ function run() {
       ul.appendChild(li);
     });
   }
+  function refreshUserOptions() {
+    // Use scroll
+    const useScrollCheckbox = blockListElem.querySelector("input[name='useScroll']");
+    useScrollCheckbox.checked = userOptions.useScroll;
+    useScrollCheckbox.addEventListener('change', (e) => {
+      userOptions.useScroll = e.target.checked;
+      console.log(userOptions.useScroll);
+      localStorage.setItem("userOptions", JSON.stringify(userOptions));
+      [...postItemElemList].forEach((elem) => setThreadScrollable(elem));
+    });
+  }
+
+  // Styling
+  function setThreadScrollable(postItemElem) {
+    const replyAreaElem = postItemElem.querySelector('.p-3.border-top');
+    replyAreaElem?.classList.toggle('scrollable-reply-area', userOptions.useScroll || false);
+  }
 
   // Initialize
   const init = () => {
     function initPostItem(postItemElem) {
       attachExpandAllBtn(postItemElem);
       filterThread(postItemElem, blockList);
+      setThreadScrollable(postItemElem);
     }
-    [...postItemElemList].forEach((elem) => initPostItem(elem));
+    refreshUserOptions();
     refreshBlockList();
+    [...postItemElemList].forEach((elem) => initPostItem(elem));
+
+
 
     function logChanges(mutationList) {
       mutationList.forEach((mutation) => {
         if (mutation.addedNodes.length) {
           const postItemElem = mutation.addedNodes[0];
-          if (postItemElem.classList.contains("post-item")) {
+          if (postItemElem.classList?.contains("post-item")) {
             initPostItem(postItemElem);
           }
         }
@@ -175,6 +200,10 @@ function run() {
       }
       .no-padding {
           padding: 0;
+      }
+      .scrollable-reply-area {
+          overflow: auto;
+          max-height: 750px;
       }
   `;
   document.head.appendChild(styleSheet);

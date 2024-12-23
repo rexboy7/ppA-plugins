@@ -1,8 +1,8 @@
 function run() {
   const userNameElems = [...document.getElementsByClassName("user-name")];
 
-  const getShowMoreBtn = () =>
-    document.querySelector(".u-fontSize12.cursor-pointer.text--primary");
+  const getShowMoreBtn = postItemElem =>
+    postItemElem.querySelector(".u-fontSize12.cursor-pointer.text--primary");
 
   userNameElems.forEach((elem) => (elem.contextMenu = "userBlockMenu"));
   const userNameSet = userNameElems.reduce(
@@ -10,14 +10,16 @@ function run() {
     new Set(),
   );
   const blockList = JSON.parse(localStorage.getItem("blockList") || "{}");
+  const postItemElemList = [...document.getElementsByClassName("post-item")];
+  const postContainerElem = document.querySelector("#post-container");
 
   // Filter
-  const filterThread = (blockList) => {
+  const filterThread = (postItemElem, blockList) => {
     if (!blockList) {
       console.error("Invalid user block list");
       return;
     }
-    [...document.getElementsByClassName("reply-item")].forEach((elem) => {
+    [...postItemElem.getElementsByClassName("reply-item")].forEach((elem) => {
       const username = elem.querySelector(".user-name").textContent;
       elem.style.cssText = blockList[username]
         ? "display: none !important;"
@@ -25,32 +27,38 @@ function run() {
     });
   };
 
-  const expandThread = () => {
-    const showMoreBtn = getShowMoreBtn();
+  const filterAllThreads = (blockList) => {
+    postItemElemList.forEach((elem) => filterThread(elem, blockList));
+  };
+
+  const expandThread = (postItemElem) => {
+    const showMoreBtn = getShowMoreBtn(postItemElem);
     if (!showMoreBtn) {
       const expandDone = new CustomEvent("expandDone");
-      document.body.dispatchEvent(expandDone);
+      postItemElem.dispatchEvent(expandDone);
       return;
     }
     showMoreBtn.click();
-    setTimeout(expandThread, 500);
+    setTimeout(expandThread, 500, postItemElem);
   };
 
   // Expand all button
-  const expandAllBtn = document.createElement("button");
-  expandAllBtn.innerHTML = "展開所有回覆";
-  expandAllBtn.className = "expand-all-btn plain-btn";
-  expandAllBtn.addEventListener("click", () => {
-    expandAllBtn.style.display = "none";
-    expandThread();
-  });
-  getShowMoreBtn()?.insertAdjacentElement("afterend", expandAllBtn);
-
-  document.body.addEventListener("expandDone", () => filterThread(blockList));
+  const attachExpandAllBtn = (postItemElem) => {
+    const expandAllBtn = document.createElement("button");
+    expandAllBtn.innerHTML = "展開所有回覆";
+    expandAllBtn.className = "expand-all-btn plain-btn";
+    expandAllBtn.addEventListener("click", () => {
+      expandAllBtn.style.display = "none";
+      expandThread(postItemElem);
+    });
+    getShowMoreBtn(postItemElem)?.insertAdjacentElement("afterend", expandAllBtn);
+    postItemElem.addEventListener("expandDone", (e) =>
+      filterThread(e.target, blockList),
+    );
+  };
 
   // Menu
   let currentUserName = "";
-
   const menu = document.createElement("menu");
   menu.className = "user-block-menu";
   menu.id = "userBlockMenu";
@@ -62,9 +70,7 @@ function run() {
 
   document.body.appendChild(menu);
 
-  const postItemElem = document.querySelector(".post-item");
-
-  postItemElem.addEventListener("contextmenu", (evt) => {
+  postContainerElem.addEventListener("contextmenu", (evt) => {
     if (evt.target.classList.contains("user-name")) {
       evt.preventDefault();
       menu.style.left = evt.pageX + "px";
@@ -74,26 +80,28 @@ function run() {
     }
   });
 
-  postItemElem.addEventListener("click", () => {
+  postContainerElem.addEventListener("click", () => {
     menu.style.display = "";
   });
   menu.addEventListener("click", () => {
     menu.style.display = "";
   });
 
-  function addToBlockList () {
+  rightContainerElem = document.querySelector(".right-container");
+
+  function addToBlockList() {
     if (!currentUserName) {
       return;
     }
     blockList[currentUserName] = true;
     localStorage.setItem("blockList", JSON.stringify(blockList));
     currentUserName = "";
-    filterThread(blockList);
+    filterAllThreads(blockList);
     refreshBlockList();
-  };
+  }
 
   // Block list
-  const replyGroupElem = document.querySelector(".reply-group");
+
   const blockListElem = document.createElement("div");
   blockListElem.className = "column-item";
   blockListElem.innerHTML = `
@@ -102,7 +110,7 @@ function run() {
       <ul class="block-list"></ul>
     </div>
   `;
-  replyGroupElem.insertAdjacentElement('afterend', blockListElem);
+  rightContainerElem.insertAdjacentElement("afterend", blockListElem);
 
   function refreshBlockList() {
     const ul = blockListElem.querySelector(".block-list");
@@ -117,7 +125,7 @@ function run() {
       button.addEventListener("click", () => {
         delete blockList[username];
         localStorage.setItem("blockList", JSON.stringify(blockList));
-        filterThread(blockList);
+        filterAllThreads(blockList);
         refreshBlockList();
       });
       li.appendChild(span);
@@ -128,7 +136,10 @@ function run() {
 
   // Initialize
   const init = () => {
-    filterThread(blockList);
+    postItemElemList.forEach((elem) => {
+      attachExpandAllBtn(elem);
+      filterThread(elem, blockList);
+    });
     refreshBlockList();
   };
 
@@ -150,7 +161,9 @@ function run() {
           border: none;
           background: none;
           color: #f79420;
-          font-size: .875rem;
+          font-size: .75rem;
+          padding: 0;
+
       }
   `;
   document.head.appendChild(styleSheet);
@@ -160,7 +173,7 @@ function waitUntilPostItemAppear() {
   let retries = 0;
   return new Promise((resolve) => {
     const interval = setInterval(() => {
-      if(retries > 20) {
+      if (retries > 20) {
         clearInterval(interval);
         reject();
       }
@@ -173,7 +186,11 @@ function waitUntilPostItemAppear() {
   });
 }
 
-if(window.location.href.includes('post_id=')) {
+if (window.location.href.includes("post_id=")) {
+  window.addEventListener("load", () => {
+    waitUntilPostItemAppear().then(run);
+  });
+} else if (window.location.href.includes("club/index")) {
   window.addEventListener("load", () => {
     waitUntilPostItemAppear().then(run);
   });

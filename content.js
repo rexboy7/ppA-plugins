@@ -1,16 +1,10 @@
 function run() {
-  const userNameElems = [...document.getElementsByClassName("user-name")];
-
+  console.log("cc");
   const getShowMoreBtn = postItemElem =>
     postItemElem.querySelector(".u-fontSize12.cursor-pointer.text--primary");
 
-  userNameElems.forEach((elem) => (elem.contextMenu = "userBlockMenu"));
-  const userNameSet = userNameElems.reduce(
-    (acc, curr) => acc.add(curr.textContent),
-    new Set(),
-  );
   const blockList = JSON.parse(localStorage.getItem("blockList") || "{}");
-  const postItemElemList = [...document.getElementsByClassName("post-item")];
+  const postItemElemList = document.getElementsByClassName("post-item");
   const postContainerElem = document.querySelector("#post-container");
 
   // Filter
@@ -28,7 +22,7 @@ function run() {
   };
 
   const filterAllThreads = (blockList) => {
-    postItemElemList.forEach((elem) => filterThread(elem, blockList));
+    [...postItemElemList].forEach((elem) => filterThread(elem, blockList));
   };
 
   const expandThread = (postItemElem) => {
@@ -46,7 +40,7 @@ function run() {
   const attachExpandAllBtn = (postItemElem) => {
     const expandAllBtn = document.createElement("button");
     expandAllBtn.innerHTML = "展開所有回覆";
-    expandAllBtn.className = "expand-all-btn plain-btn";
+    expandAllBtn.className = "expand-all-btn plain-btn no-padding";
     expandAllBtn.addEventListener("click", () => {
       expandAllBtn.style.display = "none";
       expandThread(postItemElem);
@@ -136,11 +130,29 @@ function run() {
 
   // Initialize
   const init = () => {
-    postItemElemList.forEach((elem) => {
-      attachExpandAllBtn(elem);
-      filterThread(elem, blockList);
-    });
+    function initPostItem(postItemElem) {
+      attachExpandAllBtn(postItemElem);
+      filterThread(postItemElem, blockList);
+    }
+    [...postItemElemList].forEach((elem) => initPostItem(elem));
     refreshBlockList();
+
+    function logChanges(mutationList) {
+      mutationList.forEach((mutation) => {
+        if (mutation.addedNodes.length) {
+          const postItemElem = mutation.addedNodes[0];
+          if (postItemElem.classList.contains("post-item")) {
+            initPostItem(postItemElem);
+          }
+        }
+      });
+    }
+    console.log(postContainerElem);
+    const observer = new MutationObserver(logChanges);
+    observer.observe(postContainerElem, {
+      childList: true,
+      subtree: false,
+    });
   };
 
   init();
@@ -162,36 +174,16 @@ function run() {
           background: none;
           color: #f79420;
           font-size: .75rem;
+      }
+      .no-padding {
           padding: 0;
-
       }
   `;
   document.head.appendChild(styleSheet);
 }
 
-function waitUntilPostItemAppear() {
-  let retries = 0;
-  return new Promise((resolve) => {
-    const interval = setInterval(() => {
-      if (retries > 20) {
-        clearInterval(interval);
-        reject();
-      }
-      if (document.querySelector(".post-item")) {
-        clearInterval(interval);
-        resolve();
-      }
-      retries++;
-    }, 500);
-  });
-}
-
 if (window.location.href.includes("post_id=")) {
-  window.addEventListener("load", () => {
-    waitUntilPostItemAppear().then(run);
-  });
+  run();
 } else if (window.location.href.includes("club/index")) {
-  window.addEventListener("load", () => {
-    waitUntilPostItemAppear().then(run);
-  });
+  run();
 }

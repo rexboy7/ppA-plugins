@@ -1,5 +1,4 @@
 function run() {
-  console.log("cc");
   const getShowMoreBtn = postItemElem =>
     postItemElem.querySelector(".u-fontSize12.cursor-pointer.text--primary");
 
@@ -147,7 +146,6 @@ function run() {
         }
       });
     }
-    console.log(postContainerElem);
     const observer = new MutationObserver(logChanges);
     observer.observe(postContainerElem, {
       childList: true,
